@@ -12,6 +12,16 @@ import (
 	"time"
 
 	sentryio "github.com/getsentry/sentry-go"
+	"github.com/vpnhouse/common-lib-go/auth"
+	"github.com/vpnhouse/common-lib-go/control"
+	"github.com/vpnhouse/common-lib-go/geoip"
+	"github.com/vpnhouse/common-lib-go/ipam"
+	"github.com/vpnhouse/common-lib-go/keystore"
+	"github.com/vpnhouse/common-lib-go/rapidoc"
+	"github.com/vpnhouse/common-lib-go/sentry"
+	"github.com/vpnhouse/common-lib-go/version"
+	"github.com/vpnhouse/common-lib-go/xdns"
+	"github.com/vpnhouse/common-lib-go/xhttp"
 	"github.com/vpnhouse/tunnel/internal/authorizer"
 	"github.com/vpnhouse/tunnel/internal/eventlog"
 	"github.com/vpnhouse/tunnel/internal/grpc"
@@ -24,16 +34,6 @@ import (
 	"github.com/vpnhouse/tunnel/internal/settings"
 	"github.com/vpnhouse/tunnel/internal/storage"
 	"github.com/vpnhouse/tunnel/internal/wireguard"
-	"github.com/vpnhouse/common-lib-go/auth"
-	"github.com/vpnhouse/common-lib-go/control"
-	"github.com/vpnhouse/common-lib-go/geoip"
-	"github.com/vpnhouse/common-lib-go/ipam"
-	"github.com/vpnhouse/common-lib-go/keystore"
-	"github.com/vpnhouse/common-lib-go/rapidoc"
-	"github.com/vpnhouse/common-lib-go/sentry"
-	"github.com/vpnhouse/common-lib-go/version"
-	"github.com/vpnhouse/common-lib-go/xdns"
-	"github.com/vpnhouse/common-lib-go/xhttp"
 	"go.uber.org/zap"
 )
 
@@ -69,7 +69,7 @@ func initServices(runtime *runtime.TunnelRuntime) error {
 	}
 
 	// Initialize sqlite storage
-	dataStorage, err := storage.New(runtime.Settings.SQLitePath)
+	dataStorage, err := storage.New(runtime.Settings.SQLitePath, runtime.Settings.AuthKeyCacheInterval)
 	if err != nil {
 		return err
 	}
