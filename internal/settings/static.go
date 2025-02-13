@@ -15,12 +15,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
 	adminAPI "github.com/vpnhouse/api/go/server/tunnel_admin"
-	"github.com/vpnhouse/tunnel/internal/eventlog"
-	"github.com/vpnhouse/tunnel/internal/extstat"
-	"github.com/vpnhouse/tunnel/internal/grpc"
-	"github.com/vpnhouse/tunnel/internal/iprose"
-	"github.com/vpnhouse/tunnel/internal/proxy"
-	"github.com/vpnhouse/tunnel/internal/wireguard"
 	"github.com/vpnhouse/common-lib-go/human"
 	"github.com/vpnhouse/common-lib-go/ipam"
 	"github.com/vpnhouse/common-lib-go/sentry"
@@ -31,6 +25,12 @@ import (
 	"github.com/vpnhouse/common-lib-go/xhttp"
 	"github.com/vpnhouse/common-lib-go/xnet"
 	"github.com/vpnhouse/common-lib-go/xrand"
+	"github.com/vpnhouse/tunnel/internal/eventlog"
+	"github.com/vpnhouse/tunnel/internal/extstat"
+	"github.com/vpnhouse/tunnel/internal/grpc"
+	"github.com/vpnhouse/tunnel/internal/iprose"
+	"github.com/vpnhouse/tunnel/internal/proxy"
+	"github.com/vpnhouse/tunnel/internal/wireguard"
 	"go.uber.org/zap"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"gopkg.in/hlandau/passlib.v1"
@@ -48,12 +48,13 @@ type NetworkAccessPolicy struct {
 }
 
 type Config struct {
-	InstanceID string           `yaml:"instance_id"`
-	LogLevel   string           `yaml:"log_level"`
-	SQLitePath string           `yaml:"sqlite_path" valid:"path,required"`
-	Rapidoc    bool             `yaml:"rapidoc"`
-	Wireguard  wireguard.Config `yaml:"wireguard"`
-	HTTP       HttpConfig       `yaml:"http"`
+	InstanceID           string           `yaml:"instance_id"`
+	LogLevel             string           `yaml:"log_level"`
+	SQLitePath           string           `yaml:"sqlite_path" valid:"path,required"`
+	AuthKeyCacheInterval human.Interval   `yaml:"auth_key_cache_interval" valid:"interval"`
+	Rapidoc              bool             `yaml:"rapidoc"`
+	Wireguard            wireguard.Config `yaml:"wireguard"`
+	HTTP                 HttpConfig       `yaml:"http"`
 
 	// optional configuration
 	Proxy              *proxy.Config               `yaml:"proxy,omitempty"`
@@ -254,8 +255,10 @@ func loadStaticConfig(fs afero.Fs, path string) (*Config, error) {
 
 	defer fd.Close()
 
+	// TODO: Add loading safe defaults to struct before applying stored configuration
 	c := &Config{
-		IPRose: iprose.DefaultConfig,
+		IPRose:               iprose.DefaultConfig,
+		AuthKeyCacheInterval: human.MustParseInterval(DefaultAuthKeyCacheInterval),
 	}
 	if err := yaml.NewDecoder(fd).Decode(c); err != nil {
 		return nil, xerror.EInternalError("failed to unmarshal config", err)
@@ -350,15 +353,16 @@ func safeDefaults(rootDir string) *Config {
 		HTTP: HttpConfig{
 			ListenAddr: ":80",
 		},
-		LogLevel:           "debug",
-		Rapidoc:            true,
-		SQLitePath:         filepath.Join(rootDir, "db.sqlite3"),
-		Wireguard:          wireguard.DefaultConfig(),
-		AdminAPI:           adminAPIConfig,
-		ManagementKeystore: keystorePath,
-		PortRestrictions:   ipam.DefaultPortRestrictions(),
-		PeerStatistics:     defaultPeerStatisticConfig(),
-		IPRose:             iprose.DefaultConfig,
+		LogLevel:             "debug",
+		Rapidoc:              true,
+		SQLitePath:           filepath.Join(rootDir, "db.sqlite3"),
+		AuthKeyCacheInterval: human.MustParseInterval(DefaultAuthKeyCacheInterval),
+		Wireguard:            wireguard.DefaultConfig(),
+		AdminAPI:             adminAPIConfig,
+		ManagementKeystore:   keystorePath,
+		PortRestrictions:     ipam.DefaultPortRestrictions(),
+		PeerStatistics:       defaultPeerStatisticConfig(),
+		IPRose:               iprose.DefaultConfig,
 	}
 }
 
